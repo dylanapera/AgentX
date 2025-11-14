@@ -4,12 +4,12 @@ import logging
 from dotenv import load_dotenv
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
-from azure.ai.projects.models import (
-    MessageRole,
-)
+from azure.ai.agents.models import MessageRole
 
 # Load environment variables
-load_dotenv()
+# Try to load from .env first, then sample.env if .env doesn't exist
+if not load_dotenv():
+    load_dotenv("sample.env")
 
 # Disable verbose connection logs
 logger = logging.getLogger("azure.core.pipeline.policies.http_logging_policy")
@@ -18,9 +18,21 @@ logger.setLevel(logging.WARNING)
 AIPROJECT_CONNECTION_STRING = os.getenv("AIPROJECT_CONNECTION_STRING")
 AGENT_ID = os.getenv("AGENT_ID")
 
+# Check if environment variables are loaded
+if not AIPROJECT_CONNECTION_STRING:
+    raise ValueError("AIPROJECT_CONNECTION_STRING not found in environment variables. Make sure you have a .env file.")
+if not AGENT_ID:
+    raise ValueError("AGENT_ID not found in environment variables. Make sure you have a .env file.")
+
+# Use the connection string directly as the endpoint
+# It should be in format: https://<resource>.services.ai.azure.com/api/projects/<project>
+endpoint = AIPROJECT_CONNECTION_STRING
+
 # Create an instance of the AIProjectClient using DefaultAzureCredential
-project_client = AIProjectClient.from_connection_string(
-    conn_str=AIPROJECT_CONNECTION_STRING, credential=DefaultAzureCredential()
+# Only endpoint and credential are required
+project_client = AIProjectClient(
+    endpoint=endpoint,
+    credential=DefaultAzureCredential()
 )
 
 
@@ -29,7 +41,7 @@ project_client = AIProjectClient.from_connection_string(
 async def on_chat_start():
     # Create a thread for the agent
     if not cl.user_session.get("thread_id"):
-        thread = project_client.agents.create_thread()
+        thread = project_client.agents.threads.create()
 
         cl.user_session.set("thread_id", thread.id)
         print(f"New Thread ID: {thread.id}")
@@ -42,14 +54,14 @@ async def on_message(message: cl.Message):
         # Show thinking message to user
         msg = await cl.Message("thinking...", author="agent").send()
 
-        project_client.agents.create_message(
+        project_client.agents.messages.create(
             thread_id=thread_id,
             role="user",
             content=message.content,
         )
         
-        # Run the agent to process tne message in the thread
-        run = project_client.agents.create_and_process_run(thread_id=thread_id, agent_id=AGENT_ID)
+        # Run the agent to process the message in the thread
+        run = project_client.agents.runs.create_and_process(thread_id=thread_id, agent_id=AGENT_ID)
         print(f"Run finished with status: {run.status}")
 
         # Check if you got "Rate limit is exceeded.", then you want to increase the token limit
@@ -57,14 +69,19 @@ async def on_message(message: cl.Message):
             raise Exception(run.last_error)
 
         # Get all messages from the thread
-        messages = project_client.agents.list_messages(thread_id)
+        messages = project_client.agents.messages.list(thread_id=thread_id)
 
-        # Get the last message from the agent
-        last_msg = messages.get_last_text_message_by_role(MessageRole.AGENT)
-        if not last_msg:
-            raise Exception("No response from the model.")
+        # Find the assistant's response for this run
+        agent_response = None
+        for message in messages:
+            if message.run_id == run.id and message.role == MessageRole.AGENT and message.text_messages:
+                agent_response = message.text_messages[0].text.value
+                break
+        
+        if not agent_response:
+            raise Exception("No response from the agent.")
 
-        msg.content = last_msg.text.value
+        msg.content = agent_response
         await msg.update()
 
     except Exception as e:
