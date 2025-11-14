@@ -1,4 +1,4 @@
-# Basic AI Application Deployment
+# Basic AI Application Deployment | [AgentX WebApp](https://agentx-fzc3fye4hyf5h7ah.australiaeast-01.azurewebsites.net)
 Welcome to this repository!
 If you’re new to chat bot building and want to get started quickly, this learning path will help you deploy a simple AI agent on Azure. By the end, you’ll have a working chat bot and a solid foundation for building more advanced solutions.
 
@@ -24,6 +24,3 @@ Make sure you have the following installed:
 
 ## How To Get Started
 Follow these instructions to get things going.
-
-### ChatBot Example
-Leverage this link to gain an insight of what the potential solution will look like: [AgentX](https://agentx-fzc3fye4hyf5h7ah.australiaeast-01.azurewebsites.net).
