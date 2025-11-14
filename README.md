@@ -26,4 +26,4 @@ Make sure you have the following installed:
 Follow these instructions to get things going.
 
 ### ChatBot Example
-Leverage this link to gain an insight of what the potential solution will look like. [AgentX](https://agentx-fzc3fye4hyf5h7ah.australiaeast-01.azurewebsites.net/)
+Leverage this link to gain an insight of what the potential solution will look like: [AgentX](https://agentx-fzc3fye4hyf5h7ah.australiaeast-01.azurewebsites.net).
